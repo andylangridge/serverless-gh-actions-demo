@@ -1,0 +1,215 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'feature**'
+  delete:
+    branches:
+      - 'feature**'
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TESTING_STACK_NAME: hello-world-test
+  TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-test-pip-PipelineExecutionRole-P77NAH4Z4FLM
+  TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-test-CloudFormationExecutionR-19TT71B1YBP5Q
+  TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-test-pipeline-artifactsbucket-1oncpj3oywjo9
+  PROD_STACK_NAME: hello-world-prod
+  PROD_PIPELINE_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-prod-pip-PipelineExecutionRole-1DVHQXJOIQAHP
+  PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-prod-CloudFormationExecutionR-1IZVJIUXCGOAH
+  PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-prod-pipeline-artifactsbucket-1rmppdbkc5b7v
+  REGION: eu-west-2
+
+jobs:
+  test:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: |
+          npm run test
+
+  delete-feature:
+    if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: aws-actions/setup-sam@v1
+      - name: Assume the testing pipeline user role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
+          role-session-name: testing-packaging
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+      - name: Delete feature branch stack
+        env:
+          FEATURE_BRANCH_NAME: ${{ github.event.ref }}
+        run: |
+          sam delete \
+            --stack-name $(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]') \
+            --region ${REGION} \
+            --no-prompts
+
+  build-and-deploy-feature:
+    if: startsWith(github.ref, 'refs/heads/feature')
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: aws-actions/setup-sam@v1
+      - run: sam build
+      - name: Assume the testing pipeline user role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
+          role-session-name: feature-deployment
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+      - name: Deploy to feature stack in the testing account
+        shell: bash
+        run: |
+          sam deploy --stack-name $(echo ${GITHUB_REF##*/} | tr -cd '[a-zA-Z0-9-]') \
+            --capabilities CAPABILITY_IAM \
+            --region ${REGION} \
+            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
+            --no-fail-on-empty-changeset \
+            --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}
+
+  build-and-package:
+    if: github.ref == 'refs/heads/main'
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: aws-actions/setup-sam@v1
+      - name: Build resources
+        run: sam build
+      - name: Assume the testing pipeline user role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
+          role-session-name: testing-packaging
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+      - name: Upload artifacts to testing artifact buckets
+        run: |
+          sam package \
+            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
+            --region ${REGION} \
+            --output-template-file packaged-testing.yaml
+      - uses: actions/upload-artifact@v2
+        with:
+          name: packaged-testing.yaml
+          path: packaged-testing.yaml
+      - name: Assume the prod pipeline user role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ env.PROD_PIPELINE_EXECUTION_ROLE }}
+          role-session-name: prod-packaging
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+      - name: Upload artifacts to production artifact buckets
+        run: |
+          sam package \
+            --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
+            --region ${REGION} \
+            --output-template-file packaged-prod.yaml
+      - uses: actions/upload-artifact@v2
+        with:
+          name: packaged-prod.yaml
+          path: packaged-prod.yaml
+
+  deploy-testing:
+    if: github.ref == 'refs/heads/main'
+    needs: [build-and-package]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: aws-actions/setup-sam@v1
+      - uses: actions/download-artifact@v2
+        with:
+          name: packaged-testing.yaml
+      - name: Assume the testing pipeline user role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ env.TESTING_PIPELINE_EXECUTION_ROLE }}
+          role-session-name: testing-deployment
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+      - name: Deploy to testing account
+        run: |
+          sam deploy --stack-name ${TESTING_STACK_NAME} \
+            --template packaged-testing.yaml \
+            --capabilities CAPABILITY_IAM \
+            --region ${REGION} \
+            --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
+            --no-fail-on-empty-changeset \
+            --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}
+
+  integration-test:
+    if: github.ref == 'refs/heads/main'
+    needs: [deploy-testing]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          echo "Integration tests running"
+          sleep 5
+          echo "Integration tests pass!"
+
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    needs: [integration-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: aws-actions/setup-sam@v1
+      - uses: actions/download-artifact@v2
+        with:
+          name: packaged-prod.yaml
+      - name: Assume the prod pipeline user role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ env.PROD_PIPELINE_EXECUTION_ROLE }}
+          role-session-name: prod-deployment
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+      - name: Deploy to production account
+        run: |
+          sam deploy --stack-name ${PROD_STACK_NAME} \
+            --template packaged-prod.yaml \
+            --capabilities CAPABILITY_IAM \
+            --region ${REGION} \
+            --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
+            --no-fail-on-empty-changeset \
+            --role-arn ${PROD_CLOUDFORMATION_EXECUTION_ROLE}

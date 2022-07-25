@@ -1,0 +1,17 @@
+{
+  "name": "serverless-gh-actions-demo",
+  "version": "1.0.0",
+  "description": "A demo to showcase serverless applications with GitHub Actions",
+  "type": "module",
+  "author": "Andy Langridge",
+  "license": "ISC",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+  },
+  "devDependencies": {
+    "jest": "^28.1.3"
+  },
+  "jest": {
+    "transform": {}
+  }
+}
