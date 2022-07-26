@@ -127,7 +127,7 @@ jobs:
 
   build-and-package-prod:
     if: github.ref == 'refs/heads/main'
-    needs: [test]
+    needs: [build-and-package-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
