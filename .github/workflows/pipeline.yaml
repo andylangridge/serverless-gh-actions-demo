@@ -128,10 +128,10 @@ jobs:
           path: packaged-testing.yaml
       - name: Clear AWS Credentials
         run: |
-          rm -rf .aws/credentials
-          cd ..
-          cd ..
-          ls -a
+          unset AWS_ACCESS_KEY_ID
+          unset AWS_SECRET_ACCESS_KEY
+          unset AWS_SESSION_TOKEN
+          
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
         with:
