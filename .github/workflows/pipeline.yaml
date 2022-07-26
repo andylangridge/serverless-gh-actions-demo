@@ -130,6 +130,7 @@ jobs:
         run: |
           rm -rf .aws/credentials
           cd ..
+          cd ..
           ls -a
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
