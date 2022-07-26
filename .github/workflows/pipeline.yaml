@@ -129,7 +129,7 @@ jobs:
       - name: Clear AWS Credentials
         run: |
           ls -a
-          rm -rf .aws/credentials"
+          rm -rf .aws/credentials
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
         with:
