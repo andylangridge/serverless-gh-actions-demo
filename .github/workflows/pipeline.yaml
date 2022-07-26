@@ -41,6 +41,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
       - uses: aws-actions/setup-sam@v1
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
@@ -68,6 +70,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
       - uses: aws-actions/setup-sam@v1
       - run: sam build
       - name: Assume the testing pipeline user role
@@ -97,6 +101,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
       - uses: aws-actions/setup-sam@v1
       - name: Build resources
         run: sam build
@@ -148,6 +154,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
       - uses: aws-actions/setup-sam@v1
       - uses: actions/download-artifact@v2
         with:
@@ -190,6 +198,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
       - uses: aws-actions/setup-sam@v1
       - uses: actions/download-artifact@v2
         with:
