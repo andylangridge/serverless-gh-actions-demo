@@ -90,7 +90,7 @@ jobs:
             --no-fail-on-empty-changeset \
             --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}
 
-  build-and-package:
+  build-and-package-test:
     if: github.ref == 'refs/heads/main'
     needs: [test]
     runs-on: ubuntu-latest
@@ -120,6 +120,19 @@ jobs:
         with:
           name: packaged-testing.yaml
           path: packaged-testing.yaml
+
+  build-and-package-prod:
+    if: github.ref == 'refs/heads/main'
+    needs: [build-and-package-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+      - uses: aws-actions/setup-sam@v1
+      - name: Build resources
+        run: sam build
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -143,7 +156,7 @@ jobs:
 
   deploy-testing:
     if: github.ref == 'refs/heads/main'
-    needs: [build-and-package]
+    needs: [build-and-package-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
