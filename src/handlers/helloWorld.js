@@ -1,6 +1,6 @@
 
 export const  handler = async (event) => {
-  let name = 'Andy'
+  let name = 'Mark'
   let city = 'London'
   let time = 'day'
   let day = ''
