@@ -13,13 +13,13 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   TESTING_STACK_NAME: hello-world-test
-  TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-test-pip-PipelineExecutionRole-P77NAH4Z4FLM
-  TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-test-CloudFormationExecutionR-19TT71B1YBP5Q
-  TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-test-pipeline-artifactsbucket-1oncpj3oywjo9
+  TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-test-pip-PipelineExecutionRole-SG6QXY6KT06C
+  TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-test-CloudFormationExecutionR-1X5AG6F8U2XPM
+  TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-test-pipeline-artifactsbucket-156e1y4zaqg7p
   PROD_STACK_NAME: hello-world-prod
-  PROD_PIPELINE_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-prod-pip-PipelineExecutionRole-1DVHQXJOIQAHP
-  PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-prod-CloudFormationExecutionR-1IZVJIUXCGOAH
-  PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-prod-pipeline-artifactsbucket-1rmppdbkc5b7v
+  PROD_PIPELINE_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-prod-pip-PipelineExecutionRole-12VHMF69ZXQZ2
+  PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::803481573321:role/aws-sam-cli-managed-prod-CloudFormationExecutionR-1SEVMI2TTKJ25
+  PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-prod-pipeline-artifactsbucket-1gqy7mg2wg1vn
   REGION: eu-west-2
 
 jobs:
